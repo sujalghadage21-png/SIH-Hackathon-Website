@@ -58,7 +58,7 @@ export const TacticalHeader: React.FC = () => {
   return (
     <header className="sticky top-0 z-50 w-full border-b border-tactical-border/80 bg-tactical-bg/95 backdrop-blur-md">
       {/* Top Telemetry Status Bar */}
-      <div className="w-full bg-tactical-surface/90 border-b border-tactical-border/50 px-4 py-1 text-[11px] font-mono flex items-center justify-between text-slate-400 overflow-x-auto whitespace-nowrap">
+      <div className="w-full bg-tactical-surface/90 border-b border-tactical-border/50 px-4 py-1 text-[11px] font-sans font-medium tracking-wide flex items-center justify-between text-slate-400 overflow-x-auto whitespace-nowrap">
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-1.5">
             <span className="relative flex h-2 w-2">
@@ -120,11 +120,11 @@ export const TacticalHeader: React.FC = () => {
               <span className="font-display font-extrabold text-lg tracking-wider text-slate-100 group-hover:text-cyan-300 transition-colors">
                 RESCUE-ZONE <span className="text-cyan-400">AI</span>
               </span>
-              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-cyan-950/80 border border-cyan-700/60 text-cyan-300">
+              <span className="text-[10px] font-sans font-semibold px-2 py-0.5 rounded-md bg-cyan-950/80 border border-cyan-700/60 text-cyan-300 shadow-sm">
                 DDMA
               </span>
             </div>
-            <div className="text-[10px] font-mono text-slate-400 tracking-tight">
+            <div className="!text-[11px] font-sans font-medium text-slate-400 tracking-wide mt-0.5">
               TEAM RESILIX • DISASTER DECISION PLATFORM
             </div>
           </div>
@@ -135,7 +135,7 @@ export const TacticalHeader: React.FC = () => {
           {/* 90-Second Guided Demo Button */}
           <button
             onClick={startDemo}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-mono text-xs font-bold transition-all shadow-md ${
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-display text-sm font-bold tracking-wide transition-all shadow-md ${
               isDemoRunning
                 ? 'bg-amber-500 text-slate-950 shadow-glow-amber animate-pulse'
                 : 'bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 hover:brightness-110 hover:shadow-glow-orange'
@@ -148,7 +148,7 @@ export const TacticalHeader: React.FC = () => {
           {/* Judge Mode Button */}
           <button
             onClick={toggleJudgeMode}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-mono text-xs font-semibold bg-slate-800/90 hover:bg-slate-700 text-cyan-300 border border-cyan-500/40 hover:border-cyan-400 transition-all"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-display text-sm font-bold tracking-wide bg-slate-800/90 hover:bg-slate-700 text-cyan-300 border border-cyan-500/40 hover:border-cyan-400 transition-all"
             title="Press 'J' to toggle Judge Quick-Evaluation HUD"
           >
             <BarChart3 className="w-3.5 h-3.5" />
@@ -158,7 +158,7 @@ export const TacticalHeader: React.FC = () => {
           {/* SITREP PDF Export */}
           <button
             onClick={exportSitRep}
-            className="hidden md:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg font-mono text-xs text-slate-300 bg-slate-900 border border-slate-700 hover:border-slate-500 hover:text-white transition-all"
+            className="hidden md:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg font-display text-sm font-bold tracking-wide text-slate-300 bg-slate-900 border border-slate-700 hover:border-slate-500 hover:text-white transition-all"
             title="Generate Official DDMA Situation Report"
           >
             <FileText className="w-3.5 h-3.5 text-cyan-400" />
@@ -197,10 +197,9 @@ export const TacticalHeader: React.FC = () => {
             {!isMuted ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
           </button>
 
-          {/* Enter Command Center CTA */}
           <button
             onClick={() => setActiveTab('COMMAND')}
-            className={`px-3.5 py-1.5 rounded-lg font-mono text-xs font-bold transition-all ${
+            className={`px-4 py-1.5 rounded-lg font-display text-sm font-bold tracking-wide transition-all ${
               activeTab === 'COMMAND'
                 ? 'bg-cyan-500 text-slate-950 shadow-glow-cyan'
                 : 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/50 hover:bg-cyan-500/30'
@@ -212,7 +211,7 @@ export const TacticalHeader: React.FC = () => {
       </div>
 
       {/* Navigation Tabs Horizontal Bar */}
-      <nav className="max-w-7xl mx-auto px-4 sm:px-6 flex items-center gap-1 overflow-x-auto scrollbar-none py-1 text-xs font-mono">
+      <nav className="max-w-7xl mx-auto px-4 sm:px-6 flex items-center gap-1.5 overflow-x-auto scrollbar-none py-1.5 text-[13px] font-sans font-medium">
         {navItems.map(item => {
           const isActive = activeTab === item.tab;
           return (

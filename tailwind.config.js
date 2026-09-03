@@ -41,7 +41,7 @@ export default {
       fontFamily: {
         mono: ['JetBrains Mono', 'Menlo', 'Consolas', 'monospace'],
         sans: ['Inter', 'system-ui', 'sans-serif'],
-        display: ['Rajdhani', 'Inter', 'sans-serif'],
+        display: ['Outfit', 'Inter', 'sans-serif'],
       },
       boxShadow: {
         'glow-red': '0 0 20px rgba(239, 68, 68, 0.35)',

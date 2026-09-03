@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { useDisaster } from '../../context/DisasterContext';
 import {
   createSaraighatBridge,
@@ -7,7 +8,9 @@ import {
   createHabitationStructures,
   createShelterFacilities,
   createRiverineVegetation,
-  createMobileRescueAssets
+  createMobileRescueAssets,
+  createRoadNetwork,
+  getTerrainHeight
 } from './structureBuilders';
 
 export type CameraPreset = 'DEFAULT' | 'BRIDGE' | 'BREACH' | 'SHELTER_S6' | 'DRONE';
@@ -22,7 +25,7 @@ interface DigitalTwinSceneProps {
 
 export const DigitalTwinScene: React.FC<DigitalTwinSceneProps> = ({
   interactive = true,
-  cameraDistance = 140,
+  cameraDistance = 190,
   height = '100%',
   showLayerToggles = false,
   cameraPreset = 'DEFAULT',
@@ -52,6 +55,11 @@ export const DigitalTwinScene: React.FC<DigitalTwinSceneProps> = ({
   const [showShelters, setShowShelters] = useState(true);
   const [showRoutes, setShowRoutes] = useState(true);
 
+  // 3D Projected Screen HUD Callout Badges
+  const [hudBadges, setHudBadges] = useState<
+    { id: string; code: string; name: string; type: 'habitation' | 'shelter'; x: number; y: number; color: string; info: string }[]
+  >([]);
+
   // Hover state for 3D marker
   const [hoveredEntity, setHoveredEntity] = useState<{
     type: 'habitation' | 'shelter';
@@ -76,6 +84,7 @@ export const DigitalTwinScene: React.FC<DigitalTwinSceneProps> = ({
   const structuresRef = useRef<THREE.Group | null>(null);
   const shelterFacilitiesRef = useRef<THREE.Group | null>(null);
   const vegetationRef = useRef<THREE.Group | null>(null);
+  const roadNetworkRef = useRef<THREE.Group | null>(null);
   const mobileAssetsRef = useRef<ReturnType<typeof createMobileRescueAssets> | null>(null);
 
   // Smooth camera target state
@@ -84,30 +93,32 @@ export const DigitalTwinScene: React.FC<DigitalTwinSceneProps> = ({
     lookAt: new THREE.Vector3(0, 0, 0),
   });
 
+  const controlsRef = useRef<OrbitControls | null>(null);
+  const isUserInteractingRef = useRef(false);
+
   // Camera preset handler
   useEffect(() => {
     const target = cameraTargetRef.current;
     if (cameraPreset === 'BRIDGE') {
-      // Focus looking down the Saraighat River Bridge
-      target.pos.set(-50, 32, 5);
-      target.lookAt.set(-25, 8.5, -40);
+      target.pos.set(-65, 40, 10);
+      target.lookAt.set(-25, 8.5, -45);
     } else if (cameraPreset === 'BREACH') {
-      // Dramatic close-up on Zone C embankment breach & slums
-      target.pos.set(-30, 22, 52);
-      target.lookAt.set(-18, 2.5, 18);
+      const breachY = getTerrainHeight(-17, 20);
+      target.pos.set(-40, breachY + 24, 65);
+      target.lookAt.set(-18, breachY + 2, 18);
     } else if (cameraPreset === 'SHELTER_S6') {
-      // Hilltop view of safe concrete multi-purpose shelter S6
-      target.pos.set(38, 42, -18);
-      target.lookAt.set(18, 16, -45);
+      const s6Y = getTerrainHeight(18, -50);
+      target.pos.set(50, s6Y + 30, -20);
+      target.lookAt.set(18, s6Y + 4, -50);
     } else if (cameraPreset === 'DRONE') {
-      // Close surveillance angle near current selected habitation
-      target.pos.set(-15, 60, 45);
-      target.lookAt.set(-22, 4, 12);
+      target.pos.set(-20, 80, 60);
+      target.lookAt.set(-25, 14, 15);
     } else {
-      // Default overview
-      target.pos.set(0, 110, cameraDistance);
-      target.lookAt.set(0, 0, 0);
+      // Default overview — wider to see the 350m terrain
+      target.pos.set(0, 140, cameraDistance);
+      target.lookAt.set(0, 4, 0);
     }
+    isUserInteractingRef.current = false;
   }, [cameraPreset, cameraDistance]);
 
   useEffect(() => {
@@ -122,11 +133,11 @@ export const DigitalTwinScene: React.FC<DigitalTwinSceneProps> = ({
     const bgColor = isLight ? 0xf1f5f9 : 0x040711;
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(bgColor);
-    scene.fog = new THREE.FogExp2(bgColor, 0.0035);
+    scene.fog = new THREE.FogExp2(bgColor, 0.0022);
     sceneRef.current = scene;
 
     // 2. Camera
-    const camera = new THREE.PerspectiveCamera(45, width / heightPx, 1, 1200);
+    const camera = new THREE.PerspectiveCamera(45, width / heightPx, 1, 1800);
     camera.position.copy(cameraTargetRef.current.pos);
     camera.lookAt(cameraTargetRef.current.lookAt);
     cameraRef.current = camera;
@@ -150,10 +161,10 @@ export const DigitalTwinScene: React.FC<DigitalTwinSceneProps> = ({
     sunLight.shadow.mapSize.height = 2048;
     sunLight.shadow.camera.near = 10;
     sunLight.shadow.camera.far = 400;
-    sunLight.shadow.camera.left = -120;
-    sunLight.shadow.camera.right = 120;
-    sunLight.shadow.camera.top = 120;
-    sunLight.shadow.camera.bottom = -120;
+    sunLight.shadow.camera.left = -180;
+    sunLight.shadow.camera.right = 180;
+    sunLight.shadow.camera.top = 180;
+    sunLight.shadow.camera.bottom = -180;
     scene.add(sunLight);
 
     const cyanPointLight = new THREE.PointLight(0x06b6d4, 2, 220);
@@ -164,44 +175,68 @@ export const DigitalTwinScene: React.FC<DigitalTwinSceneProps> = ({
     hazardPointLight.position.set(-18, 25, 20); // Focused at breach
     scene.add(hazardPointLight);
 
+    // Atmospheric Haze & Cloud Group
+    const cloudGroup = new THREE.Group();
+    const cloudMat = new THREE.MeshStandardMaterial({
+      color: isLight ? 0xffffff : 0x38bdf8,
+      transparent: true,
+      opacity: 0.35,
+      roughness: 1.0,
+    });
+    for (let c = 0; c < 8; c++) {
+      const cloud = new THREE.Mesh(new THREE.SphereGeometry(18 + Math.random() * 12, 12, 12), cloudMat);
+      cloud.position.set(-100 + c * 30, 85 + Math.random() * 10, -80 + (c % 3) * 50);
+      cloud.scale.set(2, 0.4, 1.2);
+      cloudGroup.add(cloud);
+    }
+    scene.add(cloudGroup);
+
     // 5. Realistic Brahmaputra River Basin Topographic Terrain Mesh
-    const terrainSize = 250;
-    const terrainSegments = 90;
+    const terrainSize = 350;
+    const terrainSegments = 110;
     const terrainGeo = new THREE.PlaneGeometry(terrainSize, terrainSize, terrainSegments, terrainSegments);
     terrainGeo.rotateX(-Math.PI / 2);
 
     const pos = terrainGeo.attributes.position;
+    const colors = new Float32Array(pos.count * 3);
+
     for (let i = 0; i < pos.count; i++) {
       const x = pos.getX(i);
       const z = pos.getZ(i);
 
-      // Real River Channel (Brahmaputra flowing S-curve through valley)
-      const riverCenterZ = -30 + Math.sin(x * 0.032) * 22;
+      let y = getTerrainHeight(x, z);
+      pos.setY(i, y);
+
+      const color = new THREE.Color();
+      const riverCenterZ = -40 + Math.sin(x * 0.024) * 30;
       const riverDist = Math.abs(z - riverCenterZ);
-      const isRiver = Math.max(0, 1 - riverDist / 28);
 
-      // Sandy River Island (Char) at x: -18, z: -8
-      const charDist = Math.sqrt(Math.pow(x + 18, 2) + Math.pow(z + 8, 2));
-      const isChar = Math.max(0, 1 - charDist / 14);
+      if (y < -3) {
+        // Deep riverbed
+        color.setHex(isLight ? 0x94a3b8 : 0x0f172a);
+      } else if (y < 2 && riverDist < 42) {
+        // Sandy riverbank
+        color.setHex(isLight ? 0xcbd5e1 : 0x1e293b);
+      } else if (y > 14) {
+        // Hill slopes
+        color.setHex(isLight ? 0x64748b : 0x0f291e);
+      } else {
+        // Floodplain
+        color.setHex(isLight ? 0xcbd5e1 : 0x0a1628);
+      }
 
-      // Nilachal / Kamakhya hills on north-east (x: 15 to 80, z: -80 to -20)
-      const hillDist = Math.sqrt(Math.pow(x - 45, 2) + Math.pow(z + 45, 2));
-      const hillElev = Math.max(0, 42 * Math.exp(-Math.pow(hillDist / 42, 2)));
-
-      // South-eastern undulating ridge
-      const southRidge = Math.max(0, 18 * Math.exp(-Math.pow((z - 50) / 30, 2)));
-
-      // Elevation calculation
-      let y = Math.sin(x * 0.02) * Math.cos(z * 0.02) * 4 + hillElev + southRidge + (isChar * 7) - (isRiver * 17);
-      pos.setY(i, Math.max(-14, y));
+      colors[i * 3] = color.r;
+      colors[i * 3 + 1] = color.g;
+      colors[i * 3 + 2] = color.b;
     }
+    terrainGeo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
     terrainGeo.computeVertexNormals();
 
     const terrainMat = new THREE.MeshStandardMaterial({
-      color: isLight ? 0xe2e8f0 : 0x0a1120,
-      roughness: 0.85,
-      metalness: 0.15,
-      flatShading: true,
+      vertexColors: true,
+      roughness: 0.8,
+      metalness: 0.1,
+      flatShading: false,
     });
     const terrainMesh = new THREE.Mesh(terrainGeo, terrainMat);
     terrainMesh.receiveShadow = true;
@@ -219,18 +254,20 @@ export const DigitalTwinScene: React.FC<DigitalTwinSceneProps> = ({
     terrainWireframe.position.y += 0.15;
     scene.add(terrainWireframe);
 
-    // 6. Dynamic Flood Water Plane with Wave Physics
-    const waterGeo = new THREE.PlaneGeometry(terrainSize, terrainSize, 64, 64);
+    // 6. Dynamic Flood Water Plane with Realistic Wave Physics & Royal Ocean Blue Color
+    const waterGeo = new THREE.PlaneGeometry(terrainSize, terrainSize, 110, 110);
     waterGeo.rotateX(-Math.PI / 2);
     const waterMat = new THREE.MeshStandardMaterial({
-      color: 0x0284c7,
+      color: 0x0077b6, // Luminous Royal River Blue
+      emissive: 0x0096c7, // Glowing azure cyan highlight
+      emissiveIntensity: 0.45,
       transparent: true,
-      opacity: 0.72,
-      roughness: 0.08,
-      metalness: 0.85,
+      opacity: 0.90,
+      roughness: 0.05,
+      metalness: 0.65,
     });
     const waterMesh = new THREE.Mesh(waterGeo, waterMat);
-    waterMesh.position.y = -6; // Baseline height
+    waterMesh.position.y = -1.0; // Baseline visible river height
     scene.add(waterMesh);
     waterMeshRef.current = waterMesh;
 
@@ -239,6 +276,11 @@ export const DigitalTwinScene: React.FC<DigitalTwinSceneProps> = ({
     const bridge = createSaraighatBridge();
     scene.add(bridge);
     bridgeRef.current = bridge;
+
+    // Road Network
+    const roads = createRoadNetwork();
+    scene.add(roads);
+    roadNetworkRef.current = roads;
 
     // River Embankment Walls & Breach Point
     const embankment = createRiverEmbankments(isR17Blocked);
@@ -274,19 +316,19 @@ export const DigitalTwinScene: React.FC<DigitalTwinSceneProps> = ({
     scene.add(routesGroup);
     routesGroupRef.current = routesGroup;
 
-    // 9. Mouse Orbit & Raycasting Interaction
-    let isDragging = false;
-    let prevMouseX = 0;
-    let prevMouseY = 0;
-    let targetRotY = 0.35;
-    let targetRotX = 0.45;
+    // 9. OrbitControls & Raycasting Interaction
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
+    controls.maxPolarAngle = Math.PI / 2 - 0.02; // Prevent camera sinking under ground
+    controls.minDistance = 20;
+    controls.maxDistance = 380;
+    controls.enabled = interactive;
+    controlsRef.current = controls;
 
-    const onMouseDown = (e: MouseEvent) => {
-      if (!interactive) return;
-      isDragging = true;
-      prevMouseX = e.clientX;
-      prevMouseY = e.clientY;
-    };
+    controls.addEventListener('start', () => {
+      isUserInteractingRef.current = true;
+    });
 
     const onMouseMove = (e: MouseEvent) => {
       if (!interactive) return;
@@ -294,54 +336,33 @@ export const DigitalTwinScene: React.FC<DigitalTwinSceneProps> = ({
       const mouseX = ((e.clientX - rect.left) / width) * 2 - 1;
       const mouseY = -((e.clientY - rect.top) / heightPx) * 2 + 1;
 
-      if (isDragging) {
-        const deltaX = e.clientX - prevMouseX;
-        const deltaY = e.clientY - prevMouseY;
-        targetRotY += deltaX * 0.005;
-        targetRotX = Math.max(0.1, Math.min(1.3, targetRotX + deltaY * 0.005));
-        prevMouseX = e.clientX;
-        prevMouseY = e.clientY;
-      } else {
-        // Raycast check for marker hover
-        const raycaster = new THREE.Raycaster();
-        raycaster.setFromCamera(new THREE.Vector2(mouseX, mouseY), camera);
-        const intersects = raycaster.intersectObjects(markerGroup.children, true);
+      // Raycast check for marker hover
+      const raycaster = new THREE.Raycaster();
+      raycaster.setFromCamera(new THREE.Vector2(mouseX, mouseY), camera);
+      const intersects = raycaster.intersectObjects(markerGroup.children, true);
 
-        if (intersects.length > 0) {
-          let obj: THREE.Object3D | null = intersects[0].object;
-          while (obj && !obj.userData?.entityId && obj.parent) {
-            obj = obj.parent;
-          }
-          if (obj?.userData?.entityId) {
-            setHoveredEntity({
-              type: obj.userData.type,
-              id: obj.userData.entityId,
-              name: obj.userData.name,
-              code: obj.userData.code,
-              score: obj.userData.score,
-              occupancy: obj.userData.occupancy,
-              x: e.clientX - rect.left,
-              y: e.clientY - rect.top,
-            });
-            container.style.cursor = 'pointer';
-          }
-        } else {
-          setHoveredEntity(null);
-          container.style.cursor = isDragging ? 'grabbing' : 'grab';
+      if (intersects.length > 0) {
+        let obj: THREE.Object3D | null = intersects[0].object;
+        while (obj && !obj.userData?.entityId && obj.parent) {
+          obj = obj.parent;
         }
+        if (obj?.userData?.entityId) {
+          setHoveredEntity({
+            type: obj.userData.type,
+            id: obj.userData.entityId,
+            name: obj.userData.name,
+            code: obj.userData.code,
+            score: obj.userData.score,
+            occupancy: obj.userData.occupancy,
+            x: e.clientX - rect.left,
+            y: e.clientY - rect.top,
+          });
+          container.style.cursor = 'pointer';
+        }
+      } else {
+        setHoveredEntity(null);
+        container.style.cursor = 'default';
       }
-    };
-
-    const onMouseUp = () => {
-      isDragging = false;
-      if (container) container.style.cursor = 'grab';
-    };
-
-    const onWheel = (e: WheelEvent) => {
-      if (!interactive) return;
-      e.preventDefault();
-      camera.position.multiplyScalar(1 + e.deltaY * 0.001);
-      camera.position.clampLength(60, 320);
     };
 
     const onClick = () => {
@@ -350,10 +371,7 @@ export const DigitalTwinScene: React.FC<DigitalTwinSceneProps> = ({
       }
     };
 
-    container.addEventListener('mousedown', onMouseDown);
     window.addEventListener('mousemove', onMouseMove);
-    window.addEventListener('mouseup', onMouseUp);
-    container.addEventListener('wheel', onWheel, { passive: false });
     container.addEventListener('click', onClick);
 
     // 10. Animation Loop
@@ -364,54 +382,128 @@ export const DigitalTwinScene: React.FC<DigitalTwinSceneProps> = ({
       animationFrameId = requestAnimationFrame(animate);
       const elapsedTime = clock.getElapsedTime();
 
-      // Smooth camera interpolation towards target or manual drag orbit
-      if (isDragging) {
-        const radius = camera.position.length();
-        camera.position.x = radius * Math.sin(targetRotY) * Math.cos(targetRotX);
-        camera.position.z = radius * Math.cos(targetRotY) * Math.cos(targetRotX);
-        camera.position.y = radius * Math.sin(targetRotX);
-        camera.lookAt(0, 0, 0);
-      } else {
+      // Smooth camera interpolation to target when not actively dragging
+      if (!isUserInteractingRef.current) {
         camera.position.lerp(cameraTargetRef.current.pos, 0.04);
-        camera.lookAt(cameraTargetRef.current.lookAt);
+        controls.target.lerp(cameraTargetRef.current.lookAt, 0.04);
       }
 
-      // Real water wave oscillation
+      controls.update();
+
+      // Real oceanic / river fluid wave physics displacement
       if (waterMeshRef.current) {
         const waterPos = waterMeshRef.current.geometry.attributes.position;
+        const time = elapsedTime * 2.2;
         for (let i = 0; i < waterPos.count; i++) {
           const u = waterPos.getX(i);
           const v = waterPos.getY(i);
-          const wave = Math.sin(u * 0.06 + elapsedTime * 1.8) * Math.cos(v * 0.06 + elapsedTime * 1.4) * 0.35;
-          waterPos.setZ(i, wave);
+
+          const w1 = Math.sin(u * 0.045 + time * 1.3) * 0.85;
+          const w2 = Math.cos(v * 0.065 + time * 1.6) * 0.65;
+          const w3 = Math.sin((u + v) * 0.08 + time * 2.4) * 0.45;
+
+          waterPos.setZ(i, w1 + w2 + w3);
         }
         waterPos.needsUpdate = true;
       }
 
-      // Update NDRF Boats, Rotor Spin, and Drone Searchlight Tracking
+      // Update NDRF Boats, Rotor Spin, Chopper & Drone Tracking
       if (mobileAssetsRef.current) {
-        // Locate selected habitation 3D coordinates for drone tracking
         let targetPos: { x: number; y: number; z: number } | undefined;
         const targetHab = habitations.find(h => h.id === selectedHabitationId);
         if (targetHab) {
+          const worldX = (targetHab.coords.x - 50) * 2.6;
+          const worldZ = (targetHab.coords.y - 50) * 2.6;
           targetPos = {
-            x: (targetHab.coords.x - 50) * 1.8,
-            y: (targetHab.elevationMeters / 80) * 26 + 1,
-            z: (targetHab.coords.y - 50) * 1.8,
+            x: worldX,
+            y: getTerrainHeight(worldX, worldZ) + 1,
+            z: worldZ,
           };
         }
         mobileAssetsRef.current.update(elapsedTime, targetPos);
       }
 
-      // Pulse beacon rings on markers
+      // Pulse beacon rings and rotate floating diamond heads
       if (markerGroupRef.current) {
         markerGroupRef.current.children.forEach(child => {
           const ring = child.getObjectByName('pulseRing');
           if (ring) {
-            const scale = 1 + (Math.sin(elapsedTime * 3 + child.position.x) * 0.5 + 0.5) * 0.8;
+            const scale = 1 + (Math.sin(elapsedTime * 3.5 + child.position.x) * 0.5 + 0.5) * 0.7;
             ring.scale.set(scale, scale, scale);
           }
+          const head = child.getObjectByName('beaconHead');
+          if (head) {
+            head.rotation.y = elapsedTime * 1.5;
+            head.position.y = 20 + Math.sin(elapsedTime * 2.5 + child.position.z) * 1.2;
+          }
         });
+      }
+
+      // Update projected 2D HUD badges above 3D beacons
+      if (container && camera) {
+        const w = container.clientWidth;
+        const h = container.clientHeight;
+        const projVec = new THREE.Vector3();
+        const nextBadges: { id: string; code: string; name: string; type: 'habitation' | 'shelter'; x: number; y: number; color: string; info: string }[] = [];
+
+        if (showHabitations) {
+          const keyHabs = habitations.filter(h => ['zone-c', 'zone-a', 'zone-e', 'zone-b'].includes(h.id));
+          keyHabs.forEach(hab => {
+            const wx = (hab.coords.x - 50) * 2.6;
+            const wz = (hab.coords.y - 50) * 2.6;
+            const wy = getTerrainHeight(wx, wz) + 24;
+            projVec.set(wx, wy, wz).project(camera);
+
+            if (projVec.z < 1.0) {
+              const sx = (projVec.x * 0.5 + 0.5) * w;
+              const sy = (-projVec.y * 0.5 + 0.5) * h;
+              let c = '#10b981';
+              if (hab.riskCategory === 'RED') c = '#ef4444';
+              else if (hab.riskCategory === 'ORANGE') c = '#f97316';
+              else if (hab.riskCategory === 'YELLOW') c = '#eab308';
+
+              nextBadges.push({
+                id: hab.id,
+                code: hab.code,
+                name: hab.name,
+                type: 'habitation',
+                x: sx,
+                y: sy,
+                color: c,
+                info: `RISK ${hab.riskCategory}`,
+              });
+            }
+          });
+        }
+
+        if (showShelters) {
+          const keyShelters = shelters.filter(s => ['s4', 's6'].includes(s.id));
+          keyShelters.forEach(shelter => {
+            const wx = (shelter.coords.x - 50) * 2.6;
+            const wz = (shelter.coords.y - 50) * 2.6;
+            const wy = getTerrainHeight(wx, wz) + 26;
+            projVec.set(wx, wy, wz).project(camera);
+
+            if (projVec.z < 1.0) {
+              const sx = (projVec.x * 0.5 + 0.5) * w;
+              const sy = (-projVec.y * 0.5 + 0.5) * h;
+              const isOverloaded = shelter.status === 'OVERLOAD' || (shelter.id === 's4' && isS4Overloaded);
+              const c = isOverloaded ? '#ef4444' : (shelter.status === 'WARNING' ? '#f59e0b' : '#06b6d4');
+
+              nextBadges.push({
+                id: shelter.id,
+                code: shelter.code,
+                name: shelter.name,
+                type: 'shelter',
+                x: sx,
+                y: sy,
+                color: c,
+                info: isOverloaded ? 'OVERLOAD' : `${shelter.occupancyPct}% OCC`,
+              });
+            }
+          });
+        }
+        setHudBadges(nextBadges);
       }
 
       renderer.render(scene, camera);
@@ -431,40 +523,43 @@ export const DigitalTwinScene: React.FC<DigitalTwinSceneProps> = ({
 
     return () => {
       cancelAnimationFrame(animationFrameId);
-      container.removeEventListener('mousedown', onMouseDown);
       window.removeEventListener('mousemove', onMouseMove);
-      window.removeEventListener('mouseup', onMouseUp);
-      container.removeEventListener('wheel', onWheel);
-      container.removeEventListener('click', onClick);
       window.removeEventListener('resize', handleResize);
-      renderer.dispose();
-      if (container.contains(renderer.domElement)) {
+      container.removeEventListener('click', onClick);
+      controls.dispose();
+      if (container && renderer.domElement) {
         container.removeChild(renderer.domElement);
       }
+      renderer.dispose();
     };
+
   }, [cameraDistance, interactive, theme]);
 
   // Update Dynamic Flood Water Level based on Precipitation and River Gauge
   useEffect(() => {
     if (!waterMeshRef.current) return;
 
-    let baseHeight = -7;
-    if (params.riverStage === 'WARNING') baseHeight = -3;
-    if (params.riverStage === 'DANGER') baseHeight = 2;
-    if (params.riverStage === 'BREACH') baseHeight = 7.5;
+    let baseHeight = -1.0;
+    if (params.riverStage === 'WARNING') baseHeight = 2.5;
+    if (params.riverStage === 'DANGER') baseHeight = 5.5;
+    if (params.riverStage === 'BREACH') baseHeight = 9.0;
 
-    const floodHeight = baseHeight + (params.rainfallPct / 100) * 8.5;
+    const floodHeight = baseHeight + (params.rainfallPct / 100) * 7.5;
     waterMeshRef.current.position.y = floodHeight;
 
     const mat = waterMeshRef.current.material as THREE.MeshStandardMaterial;
     if (params.riverStage === 'BREACH' || params.rainfallPct > 60) {
-      mat.color.setHex(0x991b1b); // Crimson danger breach
-      mat.opacity = 0.82;
+      mat.color.setHex(0xdc2626); // Crimson danger breach
+      mat.emissive.setHex(0x991b1b);
+      mat.emissiveIntensity = 0.55;
+      mat.opacity = 0.92;
     } else {
-      mat.color.setHex(0x0284c7); // Deep Brahmaputra river blue
-      mat.opacity = 0.72;
+      mat.color.setHex(theme === 'light' ? 0x0284c7 : 0x00b4d8); // Bright luminous river cyan
+      mat.emissive.setHex(0x0369a1);
+      mat.emissiveIntensity = 0.35;
+      mat.opacity = 0.88;
     }
-  }, [params.rainfallPct, params.riverStage]);
+  }, [params.rainfallPct, params.riverStage, theme]);
 
   // Update Embankment Breach State when R17 status changes
   useEffect(() => {
@@ -491,7 +586,7 @@ export const DigitalTwinScene: React.FC<DigitalTwinSceneProps> = ({
     if (mobileAssetsRef.current) mobileAssetsRef.current.group.visible = showAssets;
   }, [showTerrain, showWater, showStructures, showBridge, showShelters, showVegetation, showAssets]);
 
-  // Render Habitation and Shelter Tactical Beacons
+  // Render High-Visibility 3D Sky Beacons for Habitations and Shelters
   useEffect(() => {
     const group = markerGroupRef.current;
     if (!group) return;
@@ -501,10 +596,11 @@ export const DigitalTwinScene: React.FC<DigitalTwinSceneProps> = ({
     }
 
     if (showHabitations) {
-      habitations.forEach(hab => {
-        const worldX = (hab.coords.x - 50) * 1.8;
-        const worldZ = (hab.coords.y - 50) * 1.8;
-        const worldY = (hab.elevationMeters / 80) * 26 + 1;
+      const keyHabs = habitations.filter(h => ['zone-c', 'zone-a', 'zone-e', 'zone-b'].includes(h.id));
+      keyHabs.forEach(hab => {
+        const worldX = (hab.coords.x - 50) * 2.6;
+        const worldZ = (hab.coords.y - 50) * 2.6;
+        const worldY = getTerrainHeight(worldX, worldZ);
 
         const habObj = new THREE.Group();
         habObj.position.set(worldX, worldY, worldZ);
@@ -521,21 +617,45 @@ export const DigitalTwinScene: React.FC<DigitalTwinSceneProps> = ({
         else if (hab.riskCategory === 'ORANGE') colorHex = 0xf97316;
         else if (hab.riskCategory === 'YELLOW') colorHex = 0xeab308;
 
-        // Tactical Beacon Pin
-        const beaconGeo = new THREE.CylinderGeometry(0.8, 1.4, 4.5, 12);
-        const beaconMat = new THREE.MeshStandardMaterial({
+        // 1. Towering Sky Light Beam Pillar (42 meters tall)
+        const pillarGeo = new THREE.CylinderGeometry(0.35, 1.0, 42, 16);
+        const pillarMat = new THREE.MeshBasicMaterial({
+          color: colorHex,
+          transparent: true,
+          opacity: 0.65,
+        });
+        const pillar = new THREE.Mesh(pillarGeo, pillarMat);
+        pillar.position.y = 21;
+        habObj.add(pillar);
+
+        // 2. Floating Glowing 3D Diamond Head (Hovering high at y=20m above buildings)
+        const diamondGeo = new THREE.OctahedronGeometry(2.5, 0);
+        const diamondMat = new THREE.MeshStandardMaterial({
           color: colorHex,
           emissive: colorHex,
-          emissiveIntensity: 0.65,
-          metalness: 0.5,
+          emissiveIntensity: 1.35,
+          metalness: 0.2,
+          roughness: 0.1,
+        });
+        const diamond = new THREE.Mesh(diamondGeo, diamondMat);
+        diamond.name = 'beaconHead';
+        diamond.position.y = 20;
+        habObj.add(diamond);
+
+        // 3. Concrete Base Anchor Pin
+        const basePinGeo = new THREE.CylinderGeometry(0.8, 1.4, 4.5, 12);
+        const basePinMat = new THREE.MeshStandardMaterial({
+          color: colorHex,
+          emissive: colorHex,
+          emissiveIntensity: 0.8,
           roughness: 0.2,
         });
-        const beacon = new THREE.Mesh(beaconGeo, beaconMat);
-        beacon.position.y = 2.25;
-        habObj.add(beacon);
+        const basePin = new THREE.Mesh(basePinGeo, basePinMat);
+        basePin.position.y = 2.25;
+        habObj.add(basePin);
 
-        // Ground Pulsing Ring
-        const ringGeo = new THREE.RingGeometry(2.4, 3.8, 24);
+        // 4. Ground Pulsing Outer Ring
+        const ringGeo = new THREE.RingGeometry(3.5, 5.2, 28);
         ringGeo.rotateX(-Math.PI / 2);
         const ringMat = new THREE.MeshBasicMaterial({
           color: colorHex,
@@ -545,31 +665,19 @@ export const DigitalTwinScene: React.FC<DigitalTwinSceneProps> = ({
         });
         const ring = new THREE.Mesh(ringGeo, ringMat);
         ring.name = 'pulseRing';
-        ring.position.y = 0.25;
+        ring.position.y = 0.65;
         habObj.add(ring);
-
-        // Sky Pillar for selected habitation
-        if (hab.id === selectedHabitationId) {
-          const pillarGeo = new THREE.CylinderGeometry(0.3, 0.3, 40, 8);
-          const pillarMat = new THREE.MeshBasicMaterial({
-            color: 0x06b6d4,
-            transparent: true,
-            opacity: 0.85,
-          });
-          const pillar = new THREE.Mesh(pillarGeo, pillarMat);
-          pillar.position.y = 20;
-          habObj.add(pillar);
-        }
 
         group.add(habObj);
       });
     }
 
     if (showShelters) {
-      shelters.forEach(shelter => {
-        const worldX = (shelter.coords.x - 50) * 1.8;
-        const worldZ = (shelter.coords.y - 50) * 1.8;
-        const worldY = 6;
+      const keyShelters = shelters.filter(s => ['s4', 's6'].includes(s.id));
+      keyShelters.forEach(shelter => {
+        const worldX = (shelter.coords.x - 50) * 2.6;
+        const worldZ = (shelter.coords.y - 50) * 2.6;
+        const worldY = getTerrainHeight(worldX, worldZ);
 
         const shelterObj = new THREE.Group();
         shelterObj.position.set(worldX, worldY, worldZ);
@@ -584,17 +692,56 @@ export const DigitalTwinScene: React.FC<DigitalTwinSceneProps> = ({
         const isOverloaded = shelter.status === 'OVERLOAD' || (shelter.id === 's4' && isS4Overloaded);
         const colorHex = isOverloaded ? 0xef4444 : (shelter.status === 'WARNING' ? 0xf59e0b : 0x06b6d4);
 
-        // Shelter Tower Cube
-        const cubeGeo = new THREE.BoxGeometry(3.5, 4.5, 3.5);
+        // 1. Shelter Sky Light Beam (48 meters tall)
+        const pillarGeo = new THREE.CylinderGeometry(0.5, 1.2, 48, 16);
+        const pillarMat = new THREE.MeshBasicMaterial({
+          color: colorHex,
+          transparent: true,
+          opacity: 0.75,
+        });
+        const pillar = new THREE.Mesh(pillarGeo, pillarMat);
+        pillar.position.y = 24;
+        shelterObj.add(pillar);
+
+        // 2. Floating 3D Crest Ring (Hovering at y=23m)
+        const crestGeo = new THREE.TorusGeometry(2.4, 0.45, 12, 24);
+        crestGeo.rotateX(Math.PI / 2);
+        const crestMat = new THREE.MeshStandardMaterial({
+          color: colorHex,
+          emissive: colorHex,
+          emissiveIntensity: 1.5,
+          roughness: 0.1,
+        });
+        const crest = new THREE.Mesh(crestGeo, crestMat);
+        crest.name = 'beaconHead';
+        crest.position.y = 23;
+        shelterObj.add(crest);
+
+        // 3. Elevated Shelter Tower Block
+        const cubeGeo = new THREE.BoxGeometry(4.2, 5.5, 4.2);
         const cubeMat = new THREE.MeshStandardMaterial({
           color: colorHex,
           emissive: colorHex,
-          emissiveIntensity: 0.5,
-          roughness: 0.3,
+          emissiveIntensity: 0.85,
+          roughness: 0.2,
         });
         const cube = new THREE.Mesh(cubeGeo, cubeMat);
-        cube.position.y = 2.25;
+        cube.position.y = 2.75;
         shelterObj.add(cube);
+
+        // 4. Ground Pulse Ring
+        const ringGeo = new THREE.RingGeometry(4.0, 6.0, 32);
+        ringGeo.rotateX(-Math.PI / 2);
+        const ringMat = new THREE.MeshBasicMaterial({
+          color: colorHex,
+          transparent: true,
+          opacity: 0.8,
+          side: THREE.DoubleSide,
+        });
+        const ring = new THREE.Mesh(ringGeo, ringMat);
+        ring.name = 'pulseRing';
+        ring.position.y = 0.65;
+        shelterObj.add(ring);
 
         group.add(shelterObj);
       });
@@ -614,9 +761,10 @@ export const DigitalTwinScene: React.FC<DigitalTwinSceneProps> = ({
 
     routes.forEach(route => {
       const points = route.path.map(pt => {
-        const x = (pt[0] - 50) * 1.8;
-        const z = (pt[1] - 50) * 1.8;
-        return new THREE.Vector3(x, route.isRecommended ? 6.5 : 3.5, z);
+        const x = (pt[0] - 50) * 2.6;
+        const z = (pt[1] - 50) * 2.6;
+        const groundY = getTerrainHeight(x, z);
+        return new THREE.Vector3(x, groundY + (route.isRecommended ? 1.8 : 1.2), z);
       });
 
       const curve = new THREE.CatmullRomCurve3(points);
@@ -700,6 +848,41 @@ export const DigitalTwinScene: React.FC<DigitalTwinSceneProps> = ({
           </button>
         </div>
       )}
+
+      {/* 3D Projected Floating Tactical HUD Callout Badges */}
+      {hudBadges.map(badge => (
+        <div
+          key={badge.id}
+          onClick={() => {
+            if (badge.type === 'habitation') setSelectedHabitationId(badge.id);
+          }}
+          className="absolute z-20 -translate-x-1/2 -translate-y-full pointer-events-auto cursor-pointer group transition-transform hover:scale-110"
+          style={{ left: `${badge.x}px`, top: `${badge.y}px` }}
+        >
+          <div
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-display shadow-2xl border-2 backdrop-blur-xl transition-all duration-200 group-hover:-translate-y-1"
+            style={{ 
+              borderColor: `${badge.color}88`,
+              backgroundColor: 'rgba(4, 7, 17, 0.85)', // Dark robust background guaranteed to stand out
+              boxShadow: `0 4px 20px -2px ${badge.color}40, inset 0 0 12px ${badge.color}20`
+            }}
+          >
+            <div className="relative flex items-center justify-center">
+              <span className="absolute w-3 h-3 rounded-full animate-ping" style={{ backgroundColor: badge.color }} />
+              <span className="relative w-2 h-2 rounded-full" style={{ backgroundColor: badge.color, boxShadow: `0 0 8px ${badge.color}` }} />
+            </div>
+            
+            <div className="flex flex-col drop-shadow-md">
+              <span className="font-bold text-[13px] tracking-wide text-white leading-tight">
+                {badge.code}
+              </span>
+              <span className="text-[10px] font-bold tracking-wider" style={{ color: badge.color }}>
+                {badge.info}
+              </span>
+            </div>
+          </div>
+        </div>
+      ))}
 
       {/* Hover Entity HUD Tooltip */}
       {hoveredEntity && (

@@ -17,7 +17,8 @@ import {
   Compass,
   CheckCircle2,
   Waves,
-  Maximize2
+  Maximize2,
+  RadioTower
 } from 'lucide-react';
 import {
   INDIA_NATIONAL_HOTSPOTS,
@@ -42,7 +43,8 @@ export const TacticalGISMap: React.FC = () => {
     isR17Blocked,
     isS4Overloaded,
     params,
-    theme
+    theme,
+    intelEvents
   } = useDisaster();
 
   // Container and Leaflet Map references
@@ -59,6 +61,7 @@ export const TacticalGISMap: React.FC = () => {
   const habitationsLayerRef = useRef<L.LayerGroup | null>(null);
   const sheltersLayerRef = useRef<L.LayerGroup | null>(null);
   const hotspotsLayerRef = useRef<L.LayerGroup | null>(null);
+  const intelLayerRef = useRef<L.LayerGroup | null>(null);
 
   // User UI controls
   const [activeBasemap, setActiveBasemap] = useState<BasemapType>('SATELLITE');
@@ -68,6 +71,7 @@ export const TacticalGISMap: React.FC = () => {
   const [showRoads, setShowRoads] = useState<boolean>(true);
   const [showRoutes, setShowRoutes] = useState<boolean>(true);
   const [showInundation, setShowInundation] = useState<boolean>(true);
+  const [showIntel, setShowIntel] = useState<boolean>(true);
   const [cursorCoords, setCursorCoords] = useState<{ lat: number; lng: number } | null>(null);
 
   // Sync default basemap with global theme unless manually toggled
@@ -110,6 +114,7 @@ export const TacticalGISMap: React.FC = () => {
     habitationsLayerRef.current = L.layerGroup().addTo(map);
     sheltersLayerRef.current = L.layerGroup().addTo(map);
     hotspotsLayerRef.current = L.layerGroup().addTo(map);
+    intelLayerRef.current = L.layerGroup().addTo(map);
 
     mapInstanceRef.current = map;
 
@@ -531,6 +536,73 @@ export const TacticalGISMap: React.FC = () => {
     });
   }, [shelters, showShelters, isS4Overloaded]);
 
+  // 8. Render Live OSINT / Satellite Intelligence Feed
+  useEffect(() => {
+    const intelGroup = intelLayerRef.current;
+    if (!intelGroup) return;
+
+    intelGroup.clearLayers();
+    if (!showIntel || intelEvents.length === 0) return;
+
+    intelEvents.forEach((event, index) => {
+      const isNews = event.source === 'NEWS';
+      let eventColor = event.severity === 'CRITICAL' ? '#ef4444' : '#f97316';
+      if (!isNews) {
+        eventColor = event.severity === 'CRITICAL' ? '#0ea5e9' : '#38bdf8'; // Cyan for sat/sensor
+      }
+
+      // Blown out blur size to simulate heat concentration. Newer events are larger/more opaque
+      const opacity = Math.max(0.2, 0.8 - (index * 0.15));
+      const blurSize = isNews ? 50 : 35; // Size of the "heat" cloud
+
+      const intelIcon = L.divIcon({
+        className: 'custom-intel-ping-icon',
+        html: `
+          <div class="relative flex items-center justify-center cursor-pointer group" style="transform: translate(-50%, -50%);">
+            <!-- Simulated Heatmap Cloud / Glow -->
+            <div class="absolute rounded-full pointer-events-none" style="width: ${blurSize * 2.5}px; height: ${blurSize * 2.5}px; background: radial-gradient(circle, ${eventColor} 0%, transparent 70%); opacity: ${opacity}; filter: blur(8px);"></div>
+            
+            <!-- Tactical Ring Pulse -->
+            <span class="absolute w-8 h-8 rounded-full animate-ping" style="background-color: ${eventColor}; opacity: 0.6;"></span>
+            
+            <!-- Core Icon -->
+            <div class="relative w-7 h-7 rounded-full flex items-center justify-center shadow-2xl border-2 z-10 bg-slate-900 overflow-hidden group-hover:scale-125 transition-transform" style="border-color: ${eventColor};">
+               <span class="text-[12px] opacity-90">${isNews ? '📰' : '🛰️'}</span>
+            </div>
+            
+            <!-- Small Tag Box -->
+            <div class="absolute top-8 left-1/2 -translate-x-1/2 whitespace-nowrap px-1.5 py-0.5 rounded shadow-lg border border-slate-700/80 font-mono text-[9px] font-bold z-20 pointer-events-none" style="background: rgba(15, 23, 42, 0.95); color: ${eventColor};">
+              ${isNews ? 'OSINT' : 'GEOINT'}
+            </div>
+          </div>
+        `,
+        iconSize: [40, 40],
+        iconAnchor: [20, 20],
+      });
+
+      const marker = L.marker([event.lat, event.lng], { icon: intelIcon }).addTo(intelGroup);
+
+      marker.bindPopup(`
+        <div class="p-3 font-mono text-xs space-y-2 min-w-[240px]">
+          <div class="flex items-center justify-between border-b border-slate-700 pb-1.5">
+            <span class="font-bold text-white uppercase text-sm">${event.source} ALERT</span>
+            <span class="px-1.5 py-0.5 rounded text-[9px] font-bold text-slate-950 animate-pulse" style="background: ${eventColor};">
+              ${event.severity}
+            </span>
+          </div>
+          <div class="text-[11px] font-bold text-slate-200">${event.headline}</div>
+          <div class="text-[11px] text-slate-400 border-l-2 pl-2 my-1" style="border-color: ${eventColor};">
+            ${event.description}
+          </div>
+          <div class="text-[9px] text-slate-500 pt-1 flex justify-between">
+            <span>REGION: ${event.region}</span>
+            <span>${event.timestamp.toLocaleTimeString()}</span>
+          </div>
+        </div>
+      `, { className: 'tactical-leaflet-popup' });
+    });
+  }, [intelEvents, showIntel]);
+
   // Smooth camera navigation across Indian disaster sectors
   const handleFlyToRegion = (regionId: string, center: [number, number], zoom: number) => {
     setSelectedRegionId(regionId);
@@ -711,6 +783,17 @@ export const TacticalGISMap: React.FC = () => {
         >
           <Waves className="w-3 h-3" />
           <span>INUNDATION</span>
+        </button>
+
+        <button
+          onClick={() => setShowIntel(!showIntel)}
+          className={`flex items-center gap-1.5 px-2.5 py-1 rounded transition-colors ${
+            showIntel ? 'bg-blue-950/80 border border-blue-500/60 text-blue-300 shadow-glow-cyan' : 'text-slate-500 hover:text-slate-300'
+          }`}
+          title="Toggle Live OSINT (News / Satellites) Feed"
+        >
+          <RadioTower className="w-3 h-3" />
+          <span>LIVE INTEL {intelEvents.length > 0 ? `(${intelEvents.length})` : ''}</span>
         </button>
       </div>
 

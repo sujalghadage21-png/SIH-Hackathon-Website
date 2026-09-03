@@ -20,6 +20,8 @@ import { SCENARIO_PRESETS } from '../data/scenarios';
 import { calculateDisasterState } from '../utils/priorityEngine';
 import { soundFx } from '../utils/audio';
 import { exportSituationReport } from '../utils/pdfExport';
+import { DisasterIntelEvent } from '../types/intel';
+import { useLiveIntelFeed } from '../data/liveIntelSimulation';
 
 export type ActiveTab = 
   | 'LANDING'
@@ -60,6 +62,9 @@ interface DisasterContextType {
   isR17Blocked: boolean;
   isS4Overloaded: boolean;
   topPriorityHabitation: CalculatedHabitationState;
+  
+  // OSINT & Satellite Live Feed
+  intelEvents: DisasterIntelEvent[];
   
   // Baseline data for Before/After split
   baselineState: ReturnType<typeof calculateDisasterState>;
@@ -132,7 +137,6 @@ export const DisasterProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [isOrderApproved, setIsOrderApproved] = useState<boolean>(false);
   const [isJudgeModeOpen, setIsJudgeModeOpen] = useState<boolean>(false);
 
-  // Theme Mode (Dark / Light) with localStorage persistence
   const [theme, setThemeState] = useState<ThemeMode>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('rescue_zone_theme') as ThemeMode | null;
@@ -140,6 +144,9 @@ export const DisasterProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
     return 'dark';
   });
+
+  // Simulated Live OSINT/Satellite Feed
+  const { intelEvents } = useLiveIntelFeed(true);
 
   // Apply theme class to <html> element whenever theme changes
   useEffect(() => {
@@ -419,6 +426,7 @@ export const DisasterProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         isR17Blocked: currentState.isR17Blocked,
         isS4Overloaded: currentState.isS4Overloaded,
         topPriorityHabitation: currentState.topPriorityHabitation,
+        intelEvents,
         baselineState,
         selectedHabitationId,
         setSelectedHabitationId,
