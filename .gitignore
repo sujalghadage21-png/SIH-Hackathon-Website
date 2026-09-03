@@ -1,4 +1,44 @@
-# Logs
+# =======================================================
+# RESCUE-ZONE AI — .gitignore
+# Ensure no secrets, local environment files, or build
+# artifacts ever get committed to version control.
+# =======================================================
+
+# -------------------------------------------------------
+# 🔐 ENVIRONMENT & SECRET FILES (NEVER COMMIT THESE)
+# -------------------------------------------------------
+.env
+.env.local
+.env.development
+.env.development.local
+.env.test
+.env.test.local
+.env.production
+.env.production.local
+*.env
+*.key
+*.pem
+secrets.json
+credentials.json
+
+# -------------------------------------------------------
+# 📦 DEPENDENCIES
+# -------------------------------------------------------
+node_modules
+.pnp
+.pnp.js
+
+# -------------------------------------------------------
+# 🏗️ BUILD OUTPUT
+# -------------------------------------------------------
+dist
+dist-ssr
+build
+out
+
+# -------------------------------------------------------
+# 📋 LOGS
+# -------------------------------------------------------
 logs
 *.log
 npm-debug.log*
@@ -7,18 +47,40 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
+# -------------------------------------------------------
+# 🛠️ LOCAL DEVELOPMENT
+# -------------------------------------------------------
 *.local
+.cache
+.temp
+tmp/
 
-# Editor directories and files
+# -------------------------------------------------------
+# 💻 EDITOR & IDE FILES
+# -------------------------------------------------------
 .vscode/*
 !.vscode/extensions.json
 .idea
-.DS_Store
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
+
+# -------------------------------------------------------
+# 🖥️ OS FILES
+# -------------------------------------------------------
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# -------------------------------------------------------
+# 🧪 TESTING
+# -------------------------------------------------------
+coverage
+.nyc_output
+
+# -------------------------------------------------------
+# 🗺️ SOURCE MAPS (don't expose source in production)
+# -------------------------------------------------------
+*.map
