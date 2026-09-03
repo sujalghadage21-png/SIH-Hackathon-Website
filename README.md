@@ -1,50 +1,13 @@
-# React + TypeScript + Vite
+RESCUE-ZONE AI 🚨Emergency Disaster Intelligence & Decision PlatformDeveloped by Team RESILIX for Smart India Hackathon (SIH 2026) | Problem Statement: SIH26191  📌 Overview
+RESCUE-ZONE AI is an AI-powered disaster decision-support platform designed for the intelligent identification of hazard-based Red Zones, dynamic carrying capacity assessment, and priority relocation planning for vulnerable habitations during critical emergencies.  The platform integrates real-time risk intelligence, demographic vulnerability indices, and interactive 3D spatial terrain modeling to equip disaster management authorities and rescue coordinators with rapid, actionable insights.
+✨ Key Features🛰️ Hazard-Based Red Zone Demarcation: Automated spatial classification of high-risk threat areas into distinct operational zones. 
+🌐 3D Geospatial & Terrain Visualizations: Interactive situational awareness and spatial rendering powered by Three.js.  
+👥 Vulnerable Habitation & Relocation Planning: Evaluates demographic exposure and generates structured relocation and evacuation pathways.  
+📦 Carrying Capacity Assessment: Monitors shelter capacities, critical resources, and relief logistics to prevent system bottlenecks.  
+⚡ Tactical Command HUD: Dark-themed, high-contrast dashboard optimized for low-latency operational field and command room environments.  
+🛠️ Tech StackFrontend Framework: React 18 + TypeScript  Build Tool: Vite  Styling: Tailwind CSS + Autoprefixer  3D Graphics: Three.js  Icons: Lucide React  Linting & Code Quality: ESLint 9 
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
-
-Currently, two official plugins are available:
-
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type aware lint rules:
-
-- Configure the top-level `parserOptions` property like this:
-
-```js
-export default tseslint.config({
-  languageOptions: {
-    // other options...
-    parserOptions: {
-      project: ['./tsconfig.node.json', './tsconfig.app.json'],
-      tsconfigRootDir: import.meta.dirname,
-    },
-  },
-})
-```
-
-- Replace `tseslint.configs.recommended` to `tseslint.configs.recommendedTypeChecked` or `tseslint.configs.strictTypeChecked`
-- Optionally add `...tseslint.configs.stylisticTypeChecked`
-- Install [eslint-plugin-react](https://github.com/jsx-eslint/eslint-plugin-react) and update the config:
-
-```js
-// eslint.config.js
-import react from 'eslint-plugin-react'
-
-export default tseslint.config({
-  // Set the react version
-  settings: { react: { version: '18.3' } },
-  plugins: {
-    // Add the react plugin
-    react,
-  },
-  rules: {
-    // other rules...
-    // Enable its recommended rules
-    ...react.configs.recommended.rules,
-    ...react.configs['jsx-runtime'].rules,
-  },
-})
-```
+👥 Team Details 
+Team Name: RESILIX  Event: Smart India Hackathon (SIH 2026)  
+Problem Statement ID: SIH26191
+📄 LicenseThis project is licensed under the MIT License.
