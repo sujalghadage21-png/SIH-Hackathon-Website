@@ -1,5 +1,8 @@
-RESCUE-ZONE AI 🚨Emergency Disaster Intelligence & Decision PlatformDeveloped by Team RESILIX for Smart India Hackathon (SIH 2026) | Problem Statement: SIH26191  📌 Overview
-RESCUE-ZONE AI is an AI-powered disaster decision-support platform designed for the intelligent identification of hazard-based Red Zones, dynamic carrying capacity assessment, and priority relocation planning for vulnerable habitations during critical emergencies.  The platform integrates real-time risk intelligence, demographic vulnerability indices, and interactive 3D spatial terrain modeling to equip disaster management authorities and rescue coordinators with rapid, actionable insights.
+RESCUE-ZONE AI 🚨Emergency Disaster Intelligence & Decision PlatformDeveloped by Team RESILIX for Smart India Hackathon (SIH 2026) |
+Problem Statement: SIH26191  
+📌 Overview
+RESCUE-ZONE AI is an AI-powered disaster decision-support platform designed for the intelligent identification of hazard-based Red Zones, dynamic carrying capacity assessment, and priority relocation planning for vulnerable habitations during critical emergencies. 
+The platform integrates real-time risk intelligence, demographic vulnerability indices, and interactive 3D spatial terrain modeling to equip disaster management authorities and rescue coordinators with rapid, actionable insights.
 ✨ Key Features🛰️ Hazard-Based Red Zone Demarcation: Automated spatial classification of high-risk threat areas into distinct operational zones. 
 🌐 3D Geospatial & Terrain Visualizations: Interactive situational awareness and spatial rendering powered by Three.js.  
 👥 Vulnerable Habitation & Relocation Planning: Evaluates demographic exposure and generates structured relocation and evacuation pathways.  
